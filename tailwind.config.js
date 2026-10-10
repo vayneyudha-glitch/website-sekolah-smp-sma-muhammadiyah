@@ -14,6 +14,12 @@ export default {
             fontFamily: {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
             },
+            colors: {
+                'muhammadiyah-hijau': '#0F7A3E',
+                'muhammadiyah-hijau-tua': '#0A5C2E',
+                'muhammadiyah-hijau-muda': '#E8F5EC',
+                'muhammadiyah-kuning': '#F2B705',
+            },
         },
     },
 
