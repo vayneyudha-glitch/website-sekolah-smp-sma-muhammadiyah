@@ -27,7 +27,23 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('dashboard', absolute: false));
+        $response->assertRedirect(route('siswa.dashboard', absolute: false));
+    }
+
+    public function test_login_redirects_users_to_their_role_dashboard(): void
+    {
+        foreach (User::ROLES as $role) {
+            $user = User::factory()->create();
+            $user->forceFill(['role' => $role])->save();
+
+            $response = $this->post('/login', [
+                'email' => $user->email,
+                'password' => 'password',
+            ]);
+
+            $response->assertRedirect(route($role.'.dashboard', absolute: false));
+            $this->post('/logout');
+        }
     }
 
     public function test_users_can_not_authenticate_with_invalid_password(): void
