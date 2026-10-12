@@ -1,3 +1,7 @@
-<span {{ $attributes->merge(['class' => 'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muhammadiyah-kuning text-lg font-bold text-muhammadiyah-hijau-tua']) }} aria-label="Logo Muhammadiyah">
-    M
-</span>
+<img
+    {{ $attributes->merge(['class' => 'inline-block h-10 w-10 shrink-0 rounded-md object-contain']) }}
+    src="{{ asset('images/logo.png') }}"
+    alt="Logo SMP SMA Muhammadiyah Subang"
+    width="40"
+    height="40"
+>

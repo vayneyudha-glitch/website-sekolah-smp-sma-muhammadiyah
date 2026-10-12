@@ -6,7 +6,7 @@
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}" class="flex items-center gap-3">
-                        <x-application-logo class="h-10 w-10" />
+                        <x-application-logo />
                         <span class="hidden text-sm font-bold text-white sm:block">SMP SMA Muhammadiyah Subang</span>
                     </a>
                 </div>

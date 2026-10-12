@@ -18,7 +18,13 @@
         <div class="min-h-screen flex flex-col sm:justify-center items-center px-4 py-8 sm:py-12 bg-muhammadiyah-hijau-muda">
             <div class="mb-6 text-center">
                 <a href="/">
-                    <x-application-logo class="mx-auto h-16 w-16 text-2xl" />
+                    <img
+                        src="{{ asset('images/logo.png') }}"
+                        alt="Logo SMP SMA Muhammadiyah Subang"
+                        width="64"
+                        height="64"
+                        class="mx-auto h-16 w-16 rounded-md object-contain"
+                    >
                     <span class="mt-3 block text-lg font-bold text-muhammadiyah-hijau-tua">SMP SMA Muhammadiyah Subang</span>
                 </a>
             </div>
