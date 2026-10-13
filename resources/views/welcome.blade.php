@@ -15,8 +15,10 @@
                     <span class="max-w-[12rem] text-sm font-bold leading-tight sm:max-w-none sm:text-base">SMP SMA Muhammadiyah Subang</span>
                 </a>
                 <div class="flex items-center gap-2 sm:gap-3">
+                    <a href="{{ route('public.teachers') }}" class="rounded-lg px-3 py-2 text-sm font-semibold text-white hover:bg-muhammadiyah-hijau">Daftar Guru</a>
+                    <a href="{{ route('public.announcements') }}" class="rounded-lg px-3 py-2 text-sm font-semibold text-white hover:bg-muhammadiyah-hijau">Berita</a>
                     <a href="{{ route('login') }}" class="rounded-lg px-3 py-2 text-sm font-semibold text-white transition hover:bg-muhammadiyah-hijau focus:outline-none focus:ring-2 focus:ring-muhammadiyah-kuning sm:px-4">Login</a>
-                    <a href="{{ route('register') }}" class="rounded-lg bg-muhammadiyah-kuning px-3 py-2 text-sm font-bold text-muhammadiyah-hijau-tua transition hover:bg-muhammadiyah-kuning/90 focus:outline-none focus:ring-2 focus:ring-white sm:px-4">Daftar Sekarang</a>
+                    <a href="{{ route('ppdb.information') }}" class="rounded-lg bg-muhammadiyah-kuning px-3 py-2 text-sm font-bold text-muhammadiyah-hijau-tua transition hover:bg-muhammadiyah-kuning/90 focus:outline-none focus:ring-2 focus:ring-white sm:px-4">PPDB</a>
                 </div>
             </nav>
         </header>
@@ -38,7 +40,7 @@
                             <a href="{{ route('login') }}" class="inline-flex items-center justify-center rounded-lg bg-muhammadiyah-hijau px-6 py-3 font-semibold text-white shadow-sm transition hover:bg-muhammadiyah-hijau-tua focus:outline-none focus:ring-2 focus:ring-muhammadiyah-kuning focus:ring-offset-2">
                                 Login
                             </a>
-                            <a href="{{ route('register') }}" class="inline-flex items-center justify-center rounded-lg bg-muhammadiyah-kuning px-6 py-3 font-bold text-muhammadiyah-hijau-tua shadow-sm transition hover:bg-muhammadiyah-kuning/90 focus:outline-none focus:ring-2 focus:ring-muhammadiyah-hijau focus:ring-offset-2">
+                            <a href="{{ route('ppdb.information') }}" class="inline-flex items-center justify-center rounded-lg bg-muhammadiyah-kuning px-6 py-3 font-bold text-muhammadiyah-hijau-tua shadow-sm transition hover:bg-muhammadiyah-kuning/90 focus:outline-none focus:ring-2 focus:ring-muhammadiyah-hijau focus:ring-offset-2">
                                 Daftar Sekarang
                             </a>
                         </div>
@@ -57,5 +59,6 @@
         <footer class="bg-muhammadiyah-hijau-tua px-4 py-5 text-center text-sm text-white sm:px-6">
             &copy; {{ date('Y') }} SMP SMA Muhammadiyah Subang. Semua hak dilindungi.
         </footer>
+        <x-whatsapp-button />
     </body>
 </html>

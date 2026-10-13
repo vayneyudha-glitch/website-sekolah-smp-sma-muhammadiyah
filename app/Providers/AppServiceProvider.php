@@ -2,7 +2,15 @@
 
 namespace App\Providers;
 
+use App\Contracts\WhatsAppSender;
+use App\Models\StudentProfile;
+use App\Models\StudentInvoice;
+use App\Models\Timetable;
+use App\Models\User;
+use App\Policies\StudentInvoicePolicy;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use LogicException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -11,7 +19,25 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(WhatsAppSender::class, function (): WhatsAppSender {
+            $driver = config('whatsapp.provider', 'log');
+            $implementation = config('whatsapp.providers.'.$driver);
+            if (! is_string($implementation) || $implementation === '') {
+                $implementation = class_exists($driver) && is_subclass_of($driver, WhatsAppSender::class)
+                    ? $driver
+                    : null;
+            }
+            if (! is_string($implementation) || $implementation === '') {
+                throw new LogicException('Penyedia WhatsApp "'.$driver.'" belum dikonfigurasi.');
+            }
+
+            $sender = $this->app->make($implementation);
+            if (! $sender instanceof WhatsAppSender) {
+                throw new LogicException('Kelas penyedia WhatsApp harus mengimplementasikan WhatsAppSender.');
+            }
+
+            return $sender;
+        });
     }
 
     /**
@@ -19,6 +45,47 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Gate::policy(StudentInvoice::class, StudentInvoicePolicy::class);
+
+        Gate::define('view-student-record', function (User $user, StudentProfile $student): bool {
+            if ($user->role === User::ROLE_ADMIN) {
+                return true;
+            }
+
+            if ($user->role === User::ROLE_SISWA) {
+                return $student->user_id === $user->id;
+            }
+
+            if ($user->role === User::ROLE_ORANG_TUA) {
+                return $user->children()->whereKey($student->user_id)->exists();
+            }
+
+            return $user->role === User::ROLE_GURU
+                && $user->teacherProfile()
+                    ->where(function ($query) use ($student): void {
+                        $query->whereHas('classes', fn ($classes) => $classes->whereKey($student->school_class_id))
+                            ->orWhereHas('homeroomClasses', fn ($classes) => $classes->whereKey($student->school_class_id));
+                    })
+                    ->exists();
+        });
+
+        Gate::define('view-timetable', function (User $user, Timetable $timetable): bool {
+            if ($user->role === User::ROLE_ADMIN) {
+                return true;
+            }
+
+            if ($user->role === User::ROLE_GURU) {
+                return $user->teacherProfile()->whereKey($timetable->teacher_profile_id)->exists();
+            }
+
+            if ($user->role === User::ROLE_SISWA) {
+                return $user->studentProfile()->where('school_class_id', $timetable->school_class_id)->exists();
+            }
+
+            return $user->role === User::ROLE_ORANG_TUA
+                && $user->children()
+                    ->whereHas('studentProfile', fn ($query) => $query->where('school_class_id', $timetable->school_class_id))
+                    ->exists();
+        });
     }
 }

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Models\PpdbApplication;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -32,16 +33,21 @@ class RoleDashboardTest extends TestCase
         foreach (User::ROLES as $role) {
             $user = User::factory()->create();
             $user->forceFill(['role' => $role])->save();
+            if ($role === User::ROLE_PENDAFTAR) {
+                PpdbApplication::query()->create(['user_id' => $user->id, 'student_name' => $user->name]);
+            }
 
             $response = $this->actingAs($user)->get(route($role.'.dashboard'));
 
             $response->assertOk();
-            $response->assertSee('Dashboard '.match ($role) {
-                User::ROLE_ADMIN => 'Admin',
-                User::ROLE_GURU => 'Guru',
-                User::ROLE_SISWA => 'Siswa',
-                User::ROLE_ORANG_TUA => 'Orang Tua',
-            });
+            $expectedTitle = match ($role) {
+                User::ROLE_ADMIN => 'Dashboard Admin',
+                User::ROLE_GURU => 'Dashboard Guru',
+                User::ROLE_SISWA => 'Dashboard Siswa',
+                User::ROLE_ORANG_TUA => 'Dashboard Orang Tua',
+                User::ROLE_PENDAFTAR => 'Pendaftaran PPDB',
+            };
+            $response->assertSee($expectedTitle);
         }
     }
 }
