@@ -1,4 +1,4 @@
-<div>
+<div data-challenge-url="{{ route('attendance.challenge') }}">
     <label class="flex items-start gap-3 text-sm text-gray-700">
         <input type="checkbox" name="location_consent" value="1" required @checked(old('location_consent')) class="mt-1 rounded border-gray-300 text-muhammadiyah-hijau focus:ring-muhammadiyah-hijau">
         <span>Saya menyetujui penggunaan lokasi perangkat untuk verifikasi absensi guru.</span>

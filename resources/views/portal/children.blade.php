@@ -16,6 +16,8 @@
                     <p class="mt-1 text-gray-700">Tahun ajaran: <strong>{{ $child->studentProfile->schoolClass->academicYear->name }}</strong></p>
                     <a href="{{ route('orang_tua.children.assignments', $child) }}" class="mt-4 inline-flex min-h-10 items-center rounded-lg border border-muhammadiyah-hijau px-4 font-semibold text-muhammadiyah-hijau-tua">Lihat nilai tugas</a>
                     <a href="{{ route('orang_tua.children.attendance', $child) }}" class="mt-4 inline-flex min-h-10 items-center rounded-lg bg-muhammadiyah-hijau px-4 font-semibold text-white">Lihat absensi anak</a>
+                    <a href="{{ route('orang_tua.children.reports', $child) }}" class="mt-4 inline-flex min-h-10 items-center rounded-lg border border-muhammadiyah-hijau px-4 font-semibold text-muhammadiyah-hijau-tua">Lihat rapor terbit</a>
+                    <a href="{{ route('orang_tua.children.excuses.create', $child) }}" class="mt-4 inline-flex min-h-10 items-center rounded-lg border border-amber-400 px-4 font-semibold text-amber-900">Ajukan izin/sakit</a>
                 </section>
             @endif
         @empty

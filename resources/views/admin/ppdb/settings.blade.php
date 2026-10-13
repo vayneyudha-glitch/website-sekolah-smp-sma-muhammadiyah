@@ -3,6 +3,12 @@
     <main class="mx-auto max-w-4xl space-y-5 px-4 py-6 sm:px-6 lg:px-8">
         @if (session('status'))<div role="status" class="rounded-xl bg-green-50 p-4 text-green-900">{{ session('status') }}</div>@endif
         @if ($errors->any())<div role="alert" class="rounded-xl bg-red-50 p-4 text-red-800"><ul class="list-inside list-disc">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+        <section role="status" aria-live="polite" class="rounded-xl p-4 {{ $isRegistrationOpen ? 'bg-green-50 text-green-900' : 'bg-amber-50 text-amber-900' }}">
+            <p class="font-bold">Status saat ini: {{ $isRegistrationOpen ? 'Dibuka' : 'Ditutup' }}</p>
+            @unless ($isRegistrationOpen)
+                <p class="mt-1">Alasan: {{ $closureReason }}.</p>
+            @endunless
+        </section>
         <form method="POST" action="{{ route('admin.ppdb.settings.update') }}" class="space-y-5 rounded-xl bg-white p-5 shadow-sm sm:p-7">
             @csrf @method('PUT')
             <label class="flex items-center gap-3 font-semibold"><input type="checkbox" name="is_open" value="1" @checked(old('is_open', $settings->is_open)) class="rounded border-gray-300 text-muhammadiyah-hijau focus:ring-muhammadiyah-hijau"> Buka pendaftaran PPDB</label>

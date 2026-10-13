@@ -24,11 +24,11 @@
                                             <p class="font-semibold">{{ $record->attendance_date->format('d/m') }}: Masuk {{ $record->check_in_at?->format('H:i') ?? '—' }} / Pulang {{ $record->check_out_at?->format('H:i') ?? '—' }}</p>
                                             @if ($record->check_in_at)
                                                 <p class="text-xs text-gray-600">Lokasi masuk {{ $record->check_in_latitude }}, {{ $record->check_in_longitude }} · akurasi {{ $record->check_in_accuracy_meters }} m · IP {{ $record->check_in_ip_address }}</p>
-                                                @if ($record->check_in_selfie_path)<a class="text-xs font-semibold text-muhammadiyah-hijau-tua underline" href="{{ route('admin.attendance.teachers.selfie', [$record, 'masuk']) }}">Unduh selfie masuk</a>@endif
+                                                @if ($record->check_in_selfie_path)<a class="text-xs font-semibold text-muhammadiyah-hijau-tua underline" href="{{ route('attendance.teacher-selfie', [$record, 'masuk']) }}">Unduh selfie masuk</a>@endif
                                             @endif
                                             @if ($record->check_out_at)
                                                 <p class="text-xs text-gray-600">Lokasi pulang {{ $record->check_out_latitude }}, {{ $record->check_out_longitude }} · akurasi {{ $record->check_out_accuracy_meters }} m · IP {{ $record->check_out_ip_address }}</p>
-                                                @if ($record->check_out_selfie_path)<a class="text-xs font-semibold text-muhammadiyah-hijau-tua underline" href="{{ route('admin.attendance.teachers.selfie', [$record, 'pulang']) }}">Unduh selfie pulang</a>@endif
+                                                @if ($record->check_out_selfie_path)<a class="text-xs font-semibold text-muhammadiyah-hijau-tua underline" href="{{ route('attendance.teacher-selfie', [$record, 'pulang']) }}">Unduh selfie pulang</a>@endif
                                             @endif
                                         </div>
                                     @empty
@@ -38,8 +38,9 @@
                                 <td class="px-4 py-3">
                                     @php($flaggedRecords = $teacher->attendances->where('is_suspicious', true))
                                     @forelse ($flaggedRecords as $record)
-                                        <p class="font-semibold text-amber-800">Perlu ditinjau ({{ $record->attendance_date->format('d/m') }})</p>
+                                        <p class="font-semibold text-amber-800">{{ str_replace('_', ' ', ucfirst($record->review_status)) }} ({{ $record->attendance_date->format('d/m') }})</p>
                                         <p class="mb-2 text-xs text-gray-600">{{ implode('; ', $record->suspicious_reasons ?? []) }}</p>
+                                        @if ($record->review_note)<p class="mb-2 text-xs text-gray-600">Catatan tinjauan: {{ $record->review_note }}</p>@endif
                                     @empty
                                         <span class="text-gray-600">Tidak ada tanda terdeteksi</span>
                                     @endforelse

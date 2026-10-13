@@ -26,8 +26,7 @@ class PpdbWorkflowTest extends TestCase
 
     public function test_public_ppdb_registration_creates_a_draft_with_the_applicant_role(): void
     {
-        PpdbSetting::query()->create([
-            'id' => 1,
+        PpdbSetting::query()->whereKey(1)->update([
             'is_open' => true,
             'wave_schedule' => 'Gelombang satu',
             'registration_flow' => 'Isi formulir',
@@ -41,6 +40,7 @@ class PpdbWorkflowTest extends TestCase
             'password' => 'StrongPass123!',
             'password_confirmation' => 'StrongPass123!',
             'privacy_consent' => '1',
+            'role' => User::ROLE_ADMIN,
         ]);
 
         $user = User::query()->where('email', 'calon@example.test')->firstOrFail();
@@ -56,8 +56,7 @@ class PpdbWorkflowTest extends TestCase
 
     public function test_public_ppdb_registration_requires_privacy_consent(): void
     {
-        PpdbSetting::query()->create([
-            'id' => 1,
+        PpdbSetting::query()->whereKey(1)->update([
             'is_open' => true,
             'wave_schedule' => 'Gelombang satu',
             'registration_flow' => 'Isi formulir',
@@ -104,7 +103,7 @@ class PpdbWorkflowTest extends TestCase
         $this->actingAs($owner)
             ->get(route('ppdb.documents.download', $document))
             ->assertOk()
-            ->assertHeader('Cache-Control', 'private, no-store');
+            ->assertHeader('Cache-Control', 'no-store, private');
 
         $this->assertDatabaseHas('audit_logs', [
             'user_id' => $owner->id,

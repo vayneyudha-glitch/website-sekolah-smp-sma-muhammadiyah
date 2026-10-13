@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AttendanceSetting;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class SchoolGeofence
@@ -35,13 +36,16 @@ class SchoolGeofence
         float $longitude,
         float $accuracyMeters,
         ?array $previousPosition,
-        ?int $elapsedSeconds,
+        ?float $elapsedSeconds,
         bool $deviceUsedByAnotherAccount,
+        int $maxAccuracyMeters = 100,
     ): array {
         $reasons = [];
 
-        if ($accuracyMeters > 100) {
-            $reasons[] = 'Akurasi GPS lebih dari 100 meter';
+        if ($accuracyMeters === 0.0) {
+            $reasons[] = 'Akurasi GPS dilaporkan tepat 0 meter';
+        } elseif ($accuracyMeters > $maxAccuracyMeters) {
+            $reasons[] = 'Akurasi GPS melebihi ambang '.$maxAccuracyMeters.' meter';
         }
 
         if ($previousPosition !== null && $elapsedSeconds !== null && $elapsedSeconds >= 0) {
@@ -59,10 +63,61 @@ class SchoolGeofence
         }
 
         if ($deviceUsedByAnotherAccount) {
-            $reasons[] = 'Perangkat terdeteksi digunakan oleh akun guru lain';
+            $reasons[] = 'Perangkat terdeteksi digunakan oleh akun lain';
         }
 
         return $reasons;
+    }
+
+    public function locationUsedByAnotherAccount(float $latitude, float $longitude, int $userId): bool
+    {
+        $latitudeRange = [$latitude - 0.0000005, $latitude + 0.0000005];
+        $longitudeRange = [$longitude - 0.0000005, $longitude + 0.0000005];
+
+        $studentUserIds = DB::table('student_attendances')
+            ->join('student_profiles', 'student_profiles.id', '=', 'student_attendances.student_profile_id')
+            ->where('student_profiles.user_id', '!=', $userId)
+            ->where('student_attendances.attendance_date', '>=', now()->subDays(30)->toDateString())
+            ->whereBetween('student_attendances.latitude', $latitudeRange)
+            ->whereBetween('student_attendances.longitude', $longitudeRange)
+            ->distinct()
+            ->pluck('student_profiles.user_id')
+            ->all();
+        $teacherUserIds = DB::table('teacher_attendances')
+            ->join('teacher_profiles', 'teacher_profiles.id', '=', 'teacher_attendances.teacher_profile_id')
+            ->where('teacher_profiles.user_id', '!=', $userId)
+            ->where('teacher_attendances.attendance_date', '>=', now()->subDays(30)->toDateString())
+            ->where(function ($query) use ($latitudeRange, $longitudeRange): void {
+                $query->where(function ($checkIn) use ($latitudeRange, $longitudeRange): void {
+                    $checkIn->whereBetween('teacher_attendances.check_in_latitude', $latitudeRange)
+                        ->whereBetween('teacher_attendances.check_in_longitude', $longitudeRange);
+                })->orWhere(function ($checkOut) use ($latitudeRange, $longitudeRange): void {
+                    $checkOut->whereBetween('teacher_attendances.check_out_latitude', $latitudeRange)
+                        ->whereBetween('teacher_attendances.check_out_longitude', $longitudeRange);
+                });
+            })
+            ->distinct()
+            ->pluck('teacher_profiles.user_id')
+            ->all();
+
+        return count(array_unique([...$studentUserIds, ...$teacherUserIds])) >= 2;
+    }
+
+    public function deviceUsedByAnotherAccount(string $deviceHash, int $userId): bool
+    {
+        return DB::table('student_attendances')
+            ->join('student_profiles', 'student_profiles.id', '=', 'student_attendances.student_profile_id')
+            ->where('student_profiles.user_id', '!=', $userId)
+            ->where('student_attendances.device_hash', $deviceHash)
+            ->exists()
+            || DB::table('teacher_attendances')
+                ->join('teacher_profiles', 'teacher_profiles.id', '=', 'teacher_attendances.teacher_profile_id')
+                ->where('teacher_profiles.user_id', '!=', $userId)
+                ->where(function ($query) use ($deviceHash): void {
+                    $query->where('check_in_device_hash', $deviceHash)
+                        ->orWhere('check_out_device_hash', $deviceHash);
+                })
+                ->exists();
     }
 
     private function distance(float $latitudeA, float $longitudeA, float $latitudeB, float $longitudeB): float

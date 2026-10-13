@@ -25,7 +25,8 @@ document.querySelectorAll('[data-location-form]').forEach((form) => {
         if (form.dataset.locationReady === 'true') return;
 
         const status = form.querySelector('[data-attendance-status]')?.value;
-        if (!form.hasAttribute('data-camera-form') && status !== 'hadir') return;
+        const challengeType = form.dataset.challengeType || (status === 'hadir' ? 'student_present' : null);
+        if (!challengeType) return;
 
         event.preventDefault();
         const message = form.querySelector('[data-location-message]');
@@ -35,7 +36,7 @@ document.querySelectorAll('[data-location-form]').forEach((form) => {
         }
 
         message.textContent = 'Mengambil lokasi perangkat…';
-        navigator.geolocation.getCurrentPosition((position) => {
+        navigator.geolocation.getCurrentPosition(async (position) => {
             form.querySelector('[data-latitude]').value = position.coords.latitude;
             form.querySelector('[data-longitude]').value = position.coords.longitude;
             form.querySelector('[data-accuracy]').value = position.coords.accuracy;
@@ -55,8 +56,36 @@ document.querySelectorAll('[data-location-form]').forEach((form) => {
                 }
             }
 
-            form.dataset.locationReady = 'true';
-            form.submit();
+            message.textContent = 'Meminta token absensi sekali pakai…';
+            try {
+                const response = await fetch(form.querySelector('[data-challenge-url]')?.dataset.challengeUrl || '/absensi/tantangan', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': form.querySelector('input[name="_token"]')?.value || '',
+                    },
+                    body: JSON.stringify({ type: challengeType }),
+                });
+                if (!response.ok) {
+                    throw new Error(response.status === 429
+                        ? 'Terlalu banyak permintaan absensi. Tunggu sebentar lalu coba lagi.'
+                        : 'Token absensi tidak dapat diminta. Muat ulang halaman lalu coba lagi.');
+                }
+                const challenge = await response.json();
+                const challengeInput = form.querySelector('[name="attendance_challenge"]');
+                if (!challengeInput || !challenge || typeof challenge.token !== 'string') {
+                    throw new Error('Token absensi tidak diterima dengan benar. Muat ulang halaman lalu coba lagi.');
+                }
+                challengeInput.value = challenge.token;
+                form.dataset.locationReady = 'true';
+                form.submit();
+            } catch (error) {
+                message.textContent = error instanceof Error
+                    ? error.message
+                    : 'Token absensi gagal diminta. Periksa koneksi dan coba lagi.';
+            }
         }, (error) => {
             const details = error.code === error.PERMISSION_DENIED
                 ? 'Izin lokasi ditolak. Izinkan akses lokasi untuk situs ini di pengaturan browser.'

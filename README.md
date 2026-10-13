@@ -7,6 +7,30 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## Menjalankan aplikasi di Laragon
+
+Gunakan PHP 8.3 dari Laragon dan database MySQL proyek pada port `3307` dengan nama `website-smp-sma-muhmamadiyah-subang`. Salin `.env.example` menjadi `.env` bila belum tersedia, isi konfigurasi lokal pada berkas `.env` milik Anda, lalu buat kunci aplikasi. Jangan gunakan data rahasia pada repositori.
+
+Pasang dependensi yang tercantum di manifest proyek, lalu siapkan database dan tautan penyimpanan:
+
+```bash
+composer install
+npm install
+php artisan key:generate
+php artisan migrate
+php artisan storage:link
+```
+
+Jalankan tiga proses berikut di terminal Laragon yang terpisah:
+
+```bash
+php artisan serve
+npm run dev
+php artisan queue:work
+```
+
+Jalankan seluruh tes dengan `php artisan test`. Daftar persiapan server produksi tersedia di [docs/go-live.md](docs/go-live.md).
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
@@ -54,13 +78,33 @@ php artisan storage:link
 
 Nomor WhatsApp utama diatur dari **Profil Sekolah**. `SCHOOL_WHATSAPP` tetap menjadi nilai cadangan bila kolom profil belum diisi; gunakan kode negara dan nomor telepon, hanya angka (contoh: `6281234567890`).
 
+## Impor, izin/sakit, kenaikan kelas, dan rapor
+
+Migrasi `2026_10_13_183700_create_school_workflows.php` menambahkan penyimpanan pratinjau impor, riwayat kelas, permohonan izin/sakit, komponen nilai, dan rapor. Setelah meninjau migrasi serta memastikan koneksi Laragon yang dipilih adalah database proyek pada port `3307`, jalankan:
+
+```bash
+php artisan migrate
+```
+
+Tidak ada variabel environment baru. Fitur memakai paket Excel dan DomPDF yang sudah tercantum pada `composer.json`. Lampiran izin/sakit disimpan pada disk `local` privat; jangan buat tautan storage publik untuk lampiran tersebut.
+
+**Impor (admin):** buka **Impor Data Excel**, unduh templat sesuai jenis, lalu isi sheet `Data` mengikuti sheet `Petunjuk`. Impor murid sebelum orang tua agar NISN anak dapat ditautkan. Gunakan ID kelas dan tahun ajaran dari panel admin; maksimal 2.000 baris dan 10 MB per unggahan. Pratinjau menampilkan nomor baris dan kesalahan tanpa menampilkan data pribadi. Tidak ada data yang tersimpan sampai dikonfirmasi. Akun murid/guru/orang tua menerima kata sandi acak; unduh CSV kata sandi satu kali dan serahkan secara aman. Akun wajib mengganti kata sandi saat login pertama. Pratinjau kedaluwarsa setelah 30 menit; scheduler mengosongkan payload dan kata sandi sementara yang kedaluwarsa setiap jam.
+
+**Izin/sakit:** murid mengajukan dari menu Izin/Sakit. Orang tua memilih anak yang telah ditautkan, lalu mengisi tanggal, alasan, dan lampiran opsional (JPG/PNG/PDF, maksimal 5 MB). Guru yang mengampu kelas atau wali kelas, serta admin, dapat memutuskan dengan catatan. Permohonan yang disetujui dicatat ke rekap absensi sebagai Izin/Sakit; lampiran hanya dapat diunduh melalui pemeriksaan akses.
+
+**Tahun ajaran:** buat tahun ajaran dan kelas tujuan terlebih dahulu pada menu Akademik, lalu buka **Kenaikan Kelas**. Petakan kelas, atur tujuan khusus bagi murid yang mengulang, tinjau pratinjau, dan konfirmasi. Lulusan menjadi alumni dan akunnya dinonaktifkan; riwayat kelas lama tetap tersedia.
+
+**Nilai dan rapor:** admin/guru membuka Nilai/Rapor dari navigasi. Guru hanya dapat mengelola kelas dan mata pelajaran pada jadwalnya; wali kelas mengisi catatan dan menerbitkan rapor. Bobot komponen harus berjumlah 100%. Nilai tugas yang telah dinilai ikut dihitung pada komponen `Tugas`. Murid dan orang tua hanya melihat rapor terbit. Perubahan data sumber atau isi rapor setelah penerbitan memerlukan alasan dan dicatat pada audit. PDF memakai profil sekolah sebagai kop dan rekap absensi untuk periode tahun ajaran.
+
+**Pemeriksaan manual:** (1) impor baris valid dan tidak valid; pastikan pratinjau tidak menyimpan data sebelum konfirmasi, akun memakai kata sandi acak, dan unduhan kata sandi kedua ditolak; (2) ajukan izin dengan lampiran, tinjau menggunakan guru kelas yang benar, pastikan guru di luar kelas ditolak dan izin/sakit yang disetujui tidak berubah menjadi Alpa; (3) naikkan kelas, atur satu murid mengulang dan satu murid lulus, lalu periksa riwayat tahun lama, kelas baru, dan akses alumni; (4) atur bobot/nilai, terbitkan rapor, pastikan murid/orang tua hanya melihat rapor terbit, PDF memuat ringkasan hadir/izin/sakit/alpa, dan perubahan tanpa alasan ditolak.
+
 ## Absensi Sekolah
 
-Administrator mengatur koordinat sekolah dengan memilih titik pada peta Leaflet/OpenStreetMap, radius (default 100 meter), serta jendela waktu absen Hadir murid dan absen masuk guru. Murid hanya dapat mengirim status Hadir jika waktu server berada dalam jendela yang diatur dan perhitungan jarak Haversine di server berada dalam radius sekolah; status Izin/Sakit memerlukan alasan dan dapat disertai lampiran privat. Setiap murid hanya memiliki satu catatan per hari. Perintah terjadwal `attendance:mark-absent` mengisi status Alpa bagi murid aktif yang belum tercatat pada pukul 23:59.
+Administrator mengatur koordinat sekolah, radius, ambang akurasi GPS, serta jendela waktu absensi. Sebelum absensi Hadir dikirim, browser meminta tantangan sekali pakai yang terikat akun, sesi, dan jenis absensi. Server memakai waktu sendiri, memeriksa rentang koordinat, dan menandai akurasi buruk, loncatan lokasi, lokasi/perangkat berulang, waktu di luar jadwal, atau lokasi di luar radius setelah toleransi akurasi untuk ditinjau admin. Penanda adalah sinyal pemeriksaan, bukan bukti pasti GPS palsu. Status Izin/Sakit meminta alasan dan dapat disertai lampiran privat. Setiap murid hanya memiliki satu catatan per hari. Perintah terjadwal `attendance:mark-absent` mengisi status Alpa bagi murid aktif yang belum tercatat pada pukul 23:59.
 
-Guru melakukan absen masuk dan pulang menggunakan lokasi serta selfie. Bukti disimpan di disk privat dan metadata absensi menggunakan waktu server, koordinat, akurasi GPS, alamat IP, serta hash pengenal perangkat. Penanda akurasi GPS rendah, lompatan lokasi, dan pemakaian perangkat bersama hanya perkiraan untuk membantu tinjauan administrator; penanda tersebut tidak memblokir absensi. Guru dapat melihat rekap bulanan kelas yang diampu dan mengoreksi status dengan alasan wajib; koreksi dicatat di audit aktivitas. Orang tua dapat melihat rekap kehadiran anak yang tertaut. Administrator dapat mengatur absensi dan mengunduh rekap bulanan guru sebagai CSV UTF-8 yang kompatibel dengan Excel.
+Guru melakukan absen masuk dan pulang menggunakan lokasi serta selfie. Selfie dan lampiran disimpan pada disk privat; selfie hanya dapat dilihat admin atau guru pemilik. Penanda absensi dapat dilihat dan diputuskan admin pada antrean tinjauan; keputusan dicatat di audit aktivitas. Guru dapat melihat rekap bulanan kelas yang diampu dan mengoreksi status dengan alasan wajib. Orang tua dapat melihat rekap kehadiran anak yang tertaut. Administrator dapat mengatur absensi dan mengunduh rekap bulanan guru sebagai CSV UTF-8 yang kompatibel dengan Excel.
 
-Fitur absensi memerlukan migrasi baru `2026_10_12_120000_create_attendance_tables.php` dan penjadwal Laravel harus berjalan agar penandaan Alpa otomatis diproses. Berkas lampiran dan selfie tidak boleh dipublikasikan melalui tautan penyimpanan publik. GPS browser hanya berfungsi di HTTPS atau `localhost`; jika izin lokasi ditolak, izinkan lokasi melalui pengaturan browser.
+Fitur absensi memerlukan migrasi `2026_10_12_120000_create_attendance_tables.php` dan `2026_10_13_180000_strengthen_attendance_and_create_challenges.php`. Penjadwal Laravel harus berjalan untuk penandaan Alpa, penutupan tagihan kedaluwarsa, serta pembersihan tantangan lama. Berkas lampiran dan selfie tidak boleh dipublikasikan melalui tautan penyimpanan publik. GPS browser hanya berfungsi di HTTPS atau `localhost`; jika izin lokasi ditolak, izinkan lokasi melalui pengaturan browser. Masa retensi data lokasi mengikuti ketentuan administrasi sekolah yang dirujuk pada Kebijakan Privasi.
 
 ## Penerimaan Peserta Didik Baru
 

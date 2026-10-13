@@ -16,19 +16,21 @@
     </head>
     <body class="font-sans antialiased">
         <div class="min-h-screen bg-muhammadiyah-hijau-muda">
-            @include('layouts.navigation')
+            @include('layouts.navigation', ['pageHeader' => $header ?? null])
 
             <!-- Page Heading -->
-            @isset($header)
+            @guest
+                @isset($header)
                 <header class="bg-muhammadiyah-hijau-tua text-white shadow">
                     <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
                         {{ $header }}
                     </div>
                 </header>
-            @endisset
+                @endisset
+            @endguest
 
             <!-- Page Content -->
-            <main>
+            <main class="min-w-0 overflow-x-hidden @auth lg:ml-[260px] @endauth">
                 {{ $slot }}
             </main>
         </div>

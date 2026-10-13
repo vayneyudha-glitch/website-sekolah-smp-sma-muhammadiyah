@@ -10,9 +10,25 @@
             @if ($allowCheckIn)
                 @if ($todayAttendance)
                     <p class="mt-4 rounded-lg bg-green-50 p-3 font-semibold text-green-900">Absensi hari ini sudah tercatat: {{ ucfirst($todayAttendance->status) }}.</p>
+                    @if ($todayAttendance->review_status !== 'bersih')
+                        <div class="mt-3 rounded-lg bg-amber-50 p-4 text-amber-900">
+                            <p class="font-semibold">
+                                @if ($todayAttendance->review_status === 'perlu_ditinjau')
+                                    Absensi ini perlu ditinjau admin.
+                                @elseif ($todayAttendance->review_status === 'disetujui')
+                                    Tinjauan admin: absensi disetujui.
+                                @else
+                                    Tinjauan admin: absensi ditolak.
+                                @endif
+                            </p>
+                            <ul class="list-inside list-disc text-sm">@foreach ($todayAttendance->suspicious_reasons ?? [] as $reason)<li>{{ $reason }}</li>@endforeach</ul>
+                            @if ($todayAttendance->review_note)<p class="mt-2 text-sm">Catatan admin: {{ $todayAttendance->review_note }}</p>@endif
+                        </div>
+                    @endif
                 @else
-                    <form method="POST" action="{{ route('siswa.attendance.store') }}" enctype="multipart/form-data" data-location-form class="mt-5 space-y-4">
+                    <form method="POST" action="{{ route('siswa.attendance.store') }}" enctype="multipart/form-data" data-location-form data-challenge-url="{{ route('attendance.challenge') }}" class="mt-5 space-y-4">
                         @csrf
+                        <input type="hidden" name="attendance_challenge">
                         <div><label for="attendance-status" class="block font-semibold">Status kehadiran</label><select id="attendance-status" name="status" required data-attendance-status class="mt-1 min-h-11 w-full rounded-lg border-gray-300"><option value="hadir">Hadir</option><option value="izin">Izin</option><option value="sakit">Sakit</option></select></div>
                         <label class="flex items-start gap-3 text-sm text-gray-700">
                             <input type="checkbox" name="location_consent" value="1" @checked(old('location_consent')) class="mt-1 rounded border-gray-300 text-muhammadiyah-hijau focus:ring-muhammadiyah-hijau">
@@ -27,7 +43,9 @@
                         <input type="hidden" name="latitude" data-latitude>
                         <input type="hidden" name="longitude" data-longitude>
                         <input type="hidden" name="accuracy_meters" data-accuracy>
+                        <input type="hidden" name="device_token" data-device-token>
                         <p class="text-sm text-gray-600">Absen Hadir tersedia pukul {{ substr((string) $settings->student_check_in_starts_at, 0, 5) }}–{{ substr((string) $settings->student_check_in_ends_at, 0, 5) }} dan hanya dapat dikirim dari radius {{ $settings->radius_meters }} meter sekolah.</p>
+                        <p class="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Untuk mencatat kehadiran, lokasi perangkat diminta agar jarak ke sekolah dapat diperiksa. Lokasi disimpan bersama catatan absensi selama masa retensi administrasi sekolah sebagaimana dijelaskan di <a class="font-semibold underline" href="{{ route('legal.privacy') }}">Kebijakan Privasi</a>. Lokasi browser bukan bukti pasti dan dapat ditinjau oleh sekolah.</p>
                         <p data-location-message role="status" class="text-sm text-red-700"></p>
                         <button class="min-h-11 rounded-lg bg-muhammadiyah-hijau px-5 font-semibold text-white">Kirim absensi</button>
                     </form>
@@ -49,7 +67,7 @@
                         @forelse ($attendance as $record)
                             <tr>
                                 <td class="px-4 py-3">{{ $record->attendance_date->format('d/m/Y') }}</td>
-                                <td class="px-4 py-3 font-semibold">{{ ucfirst($record->status) }}</td>
+                                <td class="px-4 py-3 font-semibold">{{ ucfirst($record->status) }}@if ($record->review_status !== 'bersih')<span class="mt-1 block text-xs font-normal text-amber-800">{{ str_replace('_', ' ', ucfirst($record->review_status)) }}</span>@endif</td>
                                 <td class="px-4 py-3">{{ $record->checked_in_at?->format('H:i') ?? '—' }}</td>
                                 <td class="px-4 py-3">{{ $record->correction_reason ?: $record->reason ?: '—' }}</td>
                                 <td class="px-4 py-3">@if ($record->attachment_path)<a class="font-semibold text-muhammadiyah-hijau-tua underline" href="{{ route('attendance.attachment', $record) }}">Unduh berkas</a>@else — @endif</td>

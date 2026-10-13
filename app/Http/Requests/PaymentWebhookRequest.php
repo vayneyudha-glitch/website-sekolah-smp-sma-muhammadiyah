@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\PaymentWebhookLog;
+use Illuminate\Contracts\Validation\Validator as ValidatorContract;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Validator;
@@ -55,11 +56,11 @@ class PaymentWebhookRequest extends FormRequest
         });
     }
 
-    protected function failedValidation(Validator $validator): void
+    protected function failedValidation(ValidatorContract $validator): void
     {
         PaymentWebhookLog::query()->create([
             'provider' => (string) $this->route('provider'),
-            'raw_body' => $this->getContent(),
+            'raw_body' => '[redacted]',
             'signature_valid' => false,
             'processing_status' => 'payload_tidak_valid',
             'error_message' => $validator->errors()->first(),

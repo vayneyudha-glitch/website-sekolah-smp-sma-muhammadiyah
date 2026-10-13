@@ -19,7 +19,7 @@ class PaymentWebhookController extends Controller
     ): JsonResponse {
         $log = PaymentWebhookLog::query()->create([
             'provider' => $provider,
-            'raw_body' => $request->getContent(),
+            'raw_body' => '[redacted]',
             'processing_status' => 'diterima',
         ]);
 
@@ -29,7 +29,7 @@ class PaymentWebhookController extends Controller
         } catch (PaymentGatewayException $exception) {
             $log->update([
                 'processing_status' => 'payload_tidak_valid',
-                'error_message' => $exception->getMessage(),
+                'error_message' => 'Payload webhook tidak dapat divalidasi.',
                 'processed_at' => now(),
             ]);
 
@@ -53,7 +53,7 @@ class PaymentWebhookController extends Controller
         } catch (PaymentGatewayException $exception) {
             $log->update([
                 'processing_status' => 'payload_tidak_valid',
-                'error_message' => $exception->getMessage(),
+                'error_message' => 'Payload webhook tidak dapat diproses.',
                 'processed_at' => now(),
             ]);
 

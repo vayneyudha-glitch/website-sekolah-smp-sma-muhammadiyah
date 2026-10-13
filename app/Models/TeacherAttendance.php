@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'check_out_accuracy_meters', 'check_out_ip_address', 'check_out_device_hash',
     'check_out_selfie_path', 'is_suspicious', 'suspicious_reasons',
     'check_in_location_consent_at', 'check_out_location_consent_at',
+    'review_status', 'reviewed_by', 'reviewed_at', 'review_note',
 ])]
 class TeacherAttendance extends Model
 {
@@ -33,6 +34,7 @@ class TeacherAttendance extends Model
             'check_out_accuracy_meters' => 'float',
             'is_suspicious' => 'boolean',
             'suspicious_reasons' => 'array',
+            'reviewed_at' => 'datetime',
         ];
     }
 

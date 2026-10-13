@@ -8,6 +8,7 @@ use App\Models\StudentAttendance;
 use App\Models\StudentProfile;
 use App\Models\TeacherAttendance;
 use App\Models\User;
+use App\Services\AttendanceChallengeService;
 use App\Services\SchoolGeofence;
 use App\Services\SchoolNotifier;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,6 +23,21 @@ use RuntimeException;
 
 class AttendanceController extends Controller
 {
+    public function issueChallenge(Request $request, AttendanceChallengeService $challenges): \Illuminate\Http\JsonResponse
+    {
+        $data = $request->validate(['type' => ['required', 'in:student_present,teacher_check_in,teacher_check_out']]);
+        $user = $request->user();
+        $allowed = match ($data['type']) {
+            'student_present' => $user->role === User::ROLE_SISWA,
+            'teacher_check_in', 'teacher_check_out' => $user->role === User::ROLE_GURU,
+        };
+        abort_unless($allowed, 403);
+
+        $challenge = $challenges->issue($user, $data['type'], $request->session()->getId());
+
+        return response()->json($challenge, 201, ['Cache-Control' => 'no-store']);
+    }
+
     public function student(Request $request): View
     {
         $student = StudentProfile::query()->where('user_id', $request->user()->id)->firstOrFail();
@@ -44,25 +60,32 @@ class AttendanceController extends Controller
         $data = $request->validate([
             'status' => ['required', 'in:hadir,izin,sakit'],
             'location_consent' => ['accepted_if:status,hadir'],
+            'attendance_challenge' => ['required_if:status,hadir', 'nullable', 'string', 'size:64'],
             'latitude' => ['required_if:status,hadir', 'nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['required_if:status,hadir', 'nullable', 'numeric', 'between:-180,180'],
             'accuracy_meters' => ['required_if:status,hadir', 'nullable', 'numeric', 'between:0,10000'],
+            'device_token' => ['required_if:status,hadir', 'nullable', 'string', 'min:16', 'max:128'],
             'reason' => ['required_if:status,izin,sakit', 'nullable', 'string', 'max:2000'],
             'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'selfie' => ['prohibited'],
         ]);
         $student = StudentProfile::query()->where('user_id', $request->user()->id)->firstOrFail();
         $today = now();
         $settings = AttendanceSetting::current();
         $distance = null;
+        $reasons = [];
+        $deviceHash = null;
 
         if ($data['status'] === StudentAttendance::STATUS_PRESENT) {
+            app(AttendanceChallengeService::class)->consume(
+                $request->user(),
+                'student_present',
+                $request->session()->getId(),
+                $data['attendance_challenge'],
+            );
             $currentTime = $today->format('H:i:s');
             if ($currentTime < $settings->student_check_in_starts_at || $currentTime > $settings->student_check_in_ends_at) {
-                throw ValidationException::withMessages([
-                    'status' => 'Absen Hadir hanya dapat dilakukan pada jam '
-                        .substr((string) $settings->student_check_in_starts_at, 0, 5).'–'
-                        .substr((string) $settings->student_check_in_ends_at, 0, 5).'.',
-                ]);
+                $reasons[] = 'Absensi dilakukan di luar jam yang ditetapkan';
             }
 
             $distance = $geofence->distanceInMeters(
@@ -71,12 +94,41 @@ class AttendanceController extends Controller
                 $settings,
             );
 
-            if ($distance > $settings->radius_meters) {
-                throw ValidationException::withMessages([
-                    'location' => 'Anda berada di luar radius absen sekolah ('
-                        .number_format($distance, 0).' m dari sekolah).',
-                ]);
+            if ($distance > $settings->radius_meters + (float) $data['accuracy_meters']) {
+                $reasons[] = 'Lokasi berada di luar radius sekolah setelah toleransi akurasi GPS';
             }
+            if ($geofence->locationUsedByAnotherAccount(
+                (float) $data['latitude'],
+                (float) $data['longitude'],
+                $request->user()->id,
+            )) {
+                $reasons[] = 'Koordinat yang sama tercatat pada akun pengguna lain';
+            }
+            $deviceHash = hash('sha256', $data['device_token']);
+            if ($geofence->deviceUsedByAnotherAccount($deviceHash, $request->user()->id)) {
+                $reasons[] = 'Perangkat terdeteksi digunakan oleh akun lain';
+            }
+            $previousAttendance = $student->attendances()
+                ->whereNotNull('checked_in_at')
+                ->whereNotNull('latitude')
+                ->where('attendance_date', '<', $today->toDateString())
+                ->orderByDesc('attendance_date')
+                ->first();
+            $previousPosition = $previousAttendance === null ? null : [
+                'latitude' => $previousAttendance->latitude,
+                'longitude' => $previousAttendance->longitude,
+            ];
+            $elapsedSeconds = $previousAttendance?->checked_in_at?->diffInSeconds($today);
+            $reasons = [...$reasons, ...$geofence->suspiciousReasons(
+                (float) $data['latitude'],
+                (float) $data['longitude'],
+                (float) $data['accuracy_meters'],
+                $previousPosition,
+                $elapsedSeconds,
+                false,
+                $settings->max_accuracy_meters,
+            )];
+            $reasons = array_values(array_unique($reasons));
         }
 
         if ($student->attendances()->whereDate('attendance_date', $today->toDateString())->exists()) {
@@ -85,7 +137,7 @@ class AttendanceController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($request, $student, $data, $today, $distance): void {
+        DB::transaction(function () use ($request, $student, $data, $today, $distance, $reasons, $deviceHash): void {
             $attendance = $student->attendances()->firstOrCreate(
                 ['attendance_date' => $today->toDateString()],
                 [
@@ -97,6 +149,10 @@ class AttendanceController extends Controller
                     'distance_meters' => $distance,
                     'reason' => $data['reason'] ?? null,
                     'location_consent_at' => $data['status'] === StudentAttendance::STATUS_PRESENT ? now() : null,
+                    'needs_review' => $reasons !== [],
+                    'review_status' => $reasons !== [] ? 'perlu_ditinjau' : 'bersih',
+                    'suspicious_reasons' => $reasons,
+                    'device_hash' => $deviceHash,
                 ],
             );
 
@@ -107,13 +163,22 @@ class AttendanceController extends Controller
             }
 
             if ($request->hasFile('attachment')) {
-                $attachmentPath = $request->file('attachment')->store('student-attendance');
+                $attachmentPath = $request->file('attachment')->store('student-attendance', 'local');
                 if ($attachmentPath === false) {
                     throw new RuntimeException('Berkas absensi murid tidak dapat disimpan ke penyimpanan privat.');
                 }
                 $attendance->update(['attachment_path' => $attachmentPath]);
             }
         });
+
+        if ($reasons !== []) {
+            app(SchoolNotifier::class)->suspiciousStudentAttendance(
+                StudentAttendance::query()
+                    ->where('student_profile_id', $student->id)
+                    ->whereDate('attendance_date', $today->toDateString())
+                    ->firstOrFail(),
+            );
+        }
 
         return back()->with('status', 'Absensi hari ini berhasil disimpan.');
     }
@@ -126,6 +191,7 @@ class AttendanceController extends Controller
         return view('attendance.teacher', [
             'attendance' => $attendance,
             'settings' => AttendanceSetting::current(),
+            'challengeType' => null,
         ]);
     }
 
@@ -235,6 +301,30 @@ class AttendanceController extends Controller
         return $disk->download($attendance->attachment_path);
     }
 
+    public function privateTeacherSelfie(Request $request, TeacherAttendance $attendance, string $event): mixed
+    {
+        $user = $request->user();
+        abort_unless(
+            $user->role === User::ROLE_ADMIN
+                || ($user->role === User::ROLE_GURU
+                    && $user->teacherProfile()->whereKey($attendance->teacher_profile_id)->exists()),
+            403,
+        );
+        $path = match ($event) {
+            'masuk' => $attendance->check_in_selfie_path,
+            'pulang' => $attendance->check_out_selfie_path,
+            default => null,
+        };
+        abort_if($path === null, 404);
+
+        $disk = Storage::disk('local');
+        abort_unless($disk->exists($path), 404);
+
+        return $disk->download($path, 'selfie-guru-'.$attendance->attendance_date->format('Ymd').'-'.$event.'.'.pathinfo($path, PATHINFO_EXTENSION), [
+            'Cache-Control' => 'private, no-store',
+        ]);
+    }
+
     private function studentAttendancePage(Request $request, StudentProfile $student, bool $allowCheckIn): View
     {
         Gate::authorize('view-student-record', $student);
@@ -264,21 +354,25 @@ class AttendanceController extends Controller
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'accuracy_meters' => ['required', 'numeric', 'between:0,10000'],
             'device_token' => ['required', 'string', 'min:16', 'max:128'],
+            'attendance_challenge' => ['required', 'string', 'size:64'],
             'location_consent' => ['required', 'accepted'],
-            'selfie' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'selfie' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'mimetypes:image/jpeg,image/png,image/webp', 'max:5120'],
         ]);
         $profile = $request->user()->teacherProfile()->firstOrFail();
         $settings = AttendanceSetting::current();
         $now = now();
+        app(AttendanceChallengeService::class)->consume(
+            $request->user(),
+            'teacher_'.$event,
+            $request->session()->getId(),
+            $data['attendance_challenge'],
+        );
 
+        $reasons = [];
         if ($event === 'check_in') {
             $currentTime = $now->format('H:i:s');
             if ($currentTime < $settings->teacher_check_in_starts_at || $currentTime > $settings->teacher_check_in_ends_at) {
-                throw ValidationException::withMessages([
-                    'attendance' => 'Absen masuk hanya dapat dilakukan pada jam '
-                        .substr((string) $settings->teacher_check_in_starts_at, 0, 5).'–'
-                        .substr((string) $settings->teacher_check_in_ends_at, 0, 5).'.',
-                ]);
+                $reasons[] = 'Absensi masuk dilakukan di luar jam yang ditetapkan';
             }
         }
 
@@ -287,14 +381,19 @@ class AttendanceController extends Controller
             (float) $data['longitude'],
             $settings,
         );
-        if ($distance > $settings->radius_meters) {
-            throw ValidationException::withMessages([
-                'location' => 'Anda berada di luar radius sekolah ('.number_format($distance, 0).' m).',
-            ]);
+        if ($distance > $settings->radius_meters + (float) $data['accuracy_meters']) {
+            $reasons[] = 'Lokasi berada di luar radius sekolah setelah toleransi akurasi GPS';
+        }
+        if ($geofence->locationUsedByAnotherAccount(
+            (float) $data['latitude'],
+            (float) $data['longitude'],
+            $request->user()->id,
+        )) {
+            $reasons[] = 'Koordinat yang sama tercatat pada akun pengguna lain';
         }
 
         $attendance = $profile->attendances()->whereDate('attendance_date', $now->toDateString())->first();
-        $wasSuspicious = $attendance?->is_suspicious ?? false;
+        $wasPendingReview = $attendance?->review_status === 'perlu_ditinjau';
         if ($event === 'check_in' && $attendance?->check_in_at !== null) {
             throw ValidationException::withMessages(['attendance' => 'Absen masuk hari ini sudah tercatat.']);
         }
@@ -305,14 +404,8 @@ class AttendanceController extends Controller
             throw ValidationException::withMessages(['attendance' => 'Absen pulang hari ini sudah tercatat.']);
         }
 
-        $deviceHash = hash('sha256', $data['device_token']);
         $prefix = $event;
-        $otherAccountUsesDevice = TeacherAttendance::query()
-            ->where('teacher_profile_id', '!=', $profile->id)
-            ->where(function (Builder $query) use ($deviceHash): void {
-                $query->where('check_in_device_hash', $deviceHash)
-                    ->orWhere('check_out_device_hash', $deviceHash);
-            })->exists();
+        $otherAccountUsesDevice = $geofence->deviceUsedByAnotherAccount($deviceHash, $request->user()->id);
         $previousPosition = null;
         $elapsedSeconds = null;
 
@@ -338,14 +431,15 @@ class AttendanceController extends Controller
             }
         }
 
-        $reasons = $geofence->suspiciousReasons(
+        $reasons = array_values(array_unique([...$reasons, ...$geofence->suspiciousReasons(
             (float) $data['latitude'],
             (float) $data['longitude'],
             (float) $data['accuracy_meters'],
             $previousPosition,
             $elapsedSeconds,
             $otherAccountUsesDevice,
-        );
+            $settings->max_accuracy_meters,
+        )]));
         DB::transaction(function () use ($profile, $event, $prefix, $data, $deviceHash, $reasons, $now, $request): void {
             $record = TeacherAttendance::query()
                 ->where('teacher_profile_id', $profile->id)
@@ -372,7 +466,7 @@ class AttendanceController extends Controller
             if ($event === 'check_out' && $record->check_in_at === null) {
                 throw ValidationException::withMessages(['attendance' => 'Lakukan absen masuk terlebih dahulu.']);
             }
-            $selfiePath = $request->file('selfie')->store('teacher-attendance');
+            $selfiePath = $request->file('selfie')->store('teacher-attendance', 'local');
             if ($selfiePath === false) {
                 throw new RuntimeException('Selfie absensi guru tidak dapat disimpan ke penyimpanan privat.');
             }
@@ -386,6 +480,12 @@ class AttendanceController extends Controller
                 $prefix.'_device_hash' => $deviceHash,
                 $prefix.'_selfie_path' => $selfiePath,
                 'is_suspicious' => $record->is_suspicious || $reasons !== [],
+                'review_status' => $reasons !== [] || $record->review_status === 'perlu_ditinjau'
+                    ? 'perlu_ditinjau'
+                    : $record->review_status,
+                'reviewed_by' => $reasons !== [] ? null : $record->reviewed_by,
+                'reviewed_at' => $reasons !== [] ? null : $record->reviewed_at,
+                'review_note' => $reasons !== [] ? null : $record->review_note,
                 'suspicious_reasons' => array_values(array_unique([
                     ...($record->suspicious_reasons ?? []),
                     ...$reasons,
@@ -397,7 +497,7 @@ class AttendanceController extends Controller
             ->where('teacher_profile_id', $profile->id)
             ->whereDate('attendance_date', $now->toDateString())
             ->firstOrFail();
-        if ($record->is_suspicious && ! $wasSuspicious) {
+        if ($record->review_status === 'perlu_ditinjau' && ! $wasPendingReview) {
             app(SchoolNotifier::class)->suspiciousAttendance($record);
         }
 

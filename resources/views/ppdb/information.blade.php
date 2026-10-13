@@ -10,7 +10,7 @@
                     — {{ $settings?->ends_on?->format('d/m/Y') ?? 'belum ditentukan' }}
                 </p>
             @endif
-            @if ($settings?->is_open)
+            @if ($isRegistrationOpen)
                 <a href="{{ route('ppdb.register.create') }}" class="mt-6 inline-flex min-h-12 items-center justify-center rounded-lg bg-muhammadiyah-hijau px-6 py-3 font-bold text-white hover:bg-muhammadiyah-hijau-tua">Daftar Sekarang</a>
             @else
                 <p class="mt-6 rounded-lg bg-amber-50 p-4 font-semibold text-amber-900">Pendaftaran PPDB sedang ditutup.</p>

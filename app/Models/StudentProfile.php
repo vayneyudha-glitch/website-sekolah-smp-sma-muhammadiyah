@@ -33,6 +33,26 @@ class StudentProfile extends Model
         return $this->hasMany(StudentAttendance::class);
     }
 
+    public function excuseRequests(): HasMany
+    {
+        return $this->hasMany(ExcuseRequest::class);
+    }
+
+    public function classHistory(): HasMany
+    {
+        return $this->hasMany(StudentClassHistory::class);
+    }
+
+    public function gradeScores(): HasMany
+    {
+        return $this->hasMany(GradeScore::class);
+    }
+
+    public function reportCards(): HasMany
+    {
+        return $this->hasMany(ReportCard::class);
+    }
+
     public function assignmentSubmissions(): HasMany
     {
         return $this->hasMany(AssignmentSubmission::class);

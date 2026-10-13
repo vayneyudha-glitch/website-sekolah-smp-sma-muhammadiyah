@@ -11,8 +11,6 @@ class SchoolEventNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public $afterCommit = true;
-
     /**
      * @param  array<string, mixed>  $details
      */
@@ -22,7 +20,9 @@ class SchoolEventNotification extends Notification implements ShouldQueue
         public readonly string $message,
         public readonly array $details = [],
         public readonly ?string $url = null,
-    ) {}
+    ) {
+        $this->afterCommit = true;
+    }
 
     /**
      * @return array<int, string>

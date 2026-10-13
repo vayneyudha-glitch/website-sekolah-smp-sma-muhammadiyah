@@ -26,10 +26,22 @@ class PpdbController extends Controller
 {
     private const REQUIRED_DOCUMENTS = ['kk', 'akta', 'ijazah_rapor', 'pas_foto'];
 
+    private function assertRegistrationOpen(): void
+    {
+        $settings = PpdbSetting::query()->find(1);
+        $reason = $settings?->registrationClosureReason() ?? 'belum diaktifkan';
+
+        abort_if($reason !== null, 403, 'Pendaftaran PPDB sedang ditutup: '.$reason.'.');
+    }
+
     public function information(): View
     {
+        $settings = PpdbSetting::query()->find(1);
+        $closureReason = $settings?->registrationClosureReason() ?? 'belum diaktifkan';
+
         return view('ppdb.information', [
-            'settings' => PpdbSetting::query()->find(1),
+            'settings' => $settings,
+            'isRegistrationOpen' => $closureReason === null,
         ]);
     }
 
@@ -41,14 +53,14 @@ class PpdbController extends Controller
             return redirect()->route('pendaftar.dashboard');
         }
 
-        abort_unless(PpdbSetting::query()->whereKey(1)->value('is_open'), 403, 'Pendaftaran PPDB sedang ditutup.');
+        $this->assertRegistrationOpen();
 
         return view('ppdb.register');
     }
 
     public function register(Request $request): RedirectResponse
     {
-        abort_unless(PpdbSetting::query()->whereKey(1)->value('is_open'), 403, 'Pendaftaran PPDB sedang ditutup.');
+        $this->assertRegistrationOpen();
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],

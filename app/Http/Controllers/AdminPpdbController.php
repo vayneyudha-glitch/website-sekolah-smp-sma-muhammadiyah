@@ -166,8 +166,13 @@ class AdminPpdbController extends Controller
 
     public function settings(): View
     {
+        $settings = PpdbSetting::query()->firstOrCreate(['id' => 1]);
+        $closureReason = $settings->registrationClosureReason();
+
         return view('admin.ppdb.settings', [
-            'settings' => PpdbSetting::query()->firstOrCreate(['id' => 1]),
+            'settings' => $settings,
+            'isRegistrationOpen' => $closureReason === null,
+            'closureReason' => $closureReason,
         ]);
     }
 

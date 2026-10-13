@@ -4,13 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\AttendanceSetting;
 use App\Models\AuditLog;
+use App\Models\StudentAttendance;
 use App\Models\TeacherAttendance;
 use App\Models\TeacherProfile;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -29,6 +29,7 @@ class AdminAttendanceController extends Controller
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'radius_meters' => ['required', 'integer', 'between:20,5000'],
+            'max_accuracy_meters' => ['required', 'integer', 'between:1,10000'],
             'student_check_in_starts_at' => ['required', 'date_format:H:i'],
             'student_check_in_ends_at' => ['required', 'date_format:H:i', 'after:student_check_in_starts_at'],
             'teacher_check_in_starts_at' => ['required', 'date_format:H:i'],
@@ -48,6 +49,7 @@ class AdminAttendanceController extends Controller
                     'latitude' => $data['latitude'],
                     'longitude' => $data['longitude'],
                     'radius_meters' => $data['radius_meters'],
+                    'max_accuracy_meters' => $data['max_accuracy_meters'],
                     'student_check_in_starts_at' => $data['student_check_in_starts_at'],
                     'student_check_in_ends_at' => $data['student_check_in_ends_at'],
                     'teacher_check_in_starts_at' => $data['teacher_check_in_starts_at'],
@@ -120,23 +122,81 @@ class AdminAttendanceController extends Controller
         ]);
     }
 
-    public function teacherSelfie(TeacherAttendance $attendance, string $event): StreamedResponse
+    public function reviewQueue(): View
     {
-        $path = match ($event) {
-            'masuk' => $attendance->check_in_selfie_path,
-            'pulang' => $attendance->check_out_selfie_path,
-            default => null,
-        };
-        abort_if($path === null, 404);
+        $students = StudentAttendance::query()
+            ->with('student.user')
+            ->where('review_status', 'perlu_ditinjau')
+            ->orderByDesc('attendance_date')
+            ->get()
+            ->map(fn (StudentAttendance $attendance): array => [
+                'type' => 'murid',
+                'id' => $attendance->id,
+                'name' => $attendance->student->user->name,
+                'date' => $attendance->attendance_date,
+                'summary' => 'Status hadir murid',
+                'reasons' => $attendance->suspicious_reasons ?? [],
+                'record' => $attendance,
+            ]);
 
-        $disk = Storage::disk('local');
-        abort_unless($disk->exists($path), 404);
+        $teachers = TeacherAttendance::query()
+            ->with('teacher.user')
+            ->where('review_status', 'perlu_ditinjau')
+            ->orderByDesc('attendance_date')
+            ->get()
+            ->map(fn (TeacherAttendance $attendance): array => [
+                'type' => 'guru',
+                'id' => $attendance->id,
+                'name' => $attendance->teacher->user->name,
+                'date' => $attendance->attendance_date,
+                'summary' => 'Absensi guru'.($attendance->check_in_at ? ' masuk' : '').($attendance->check_out_at ? ' dan pulang' : ''),
+                'reasons' => $attendance->suspicious_reasons ?? [],
+                'record' => $attendance,
+            ]);
 
-        $extension = pathinfo($path, PATHINFO_EXTENSION);
-
-        return $disk->download($path, 'selfie-guru-'.$attendance->attendance_date->format('Ymd').'-'.$event.'.'.$extension, [
-            'Cache-Control' => 'private, no-store',
+        return view('admin.attendance.review', [
+            'items' => $students->concat($teachers)->sortByDesc(fn (array $item) => $item['date']->timestamp)->values(),
         ]);
+    }
+
+    public function review(Request $request, string $type, int $attendance): RedirectResponse
+    {
+        $data = $request->validate([
+            'decision' => ['required', 'in:disetujui,ditolak'],
+            'note' => ['required', 'string', 'max:2000'],
+        ]);
+        $modelClass = match ($type) {
+            'murid' => StudentAttendance::class,
+            'guru' => TeacherAttendance::class,
+            default => abort(404),
+        };
+
+        DB::transaction(function () use ($request, $modelClass, $attendance, $type, $data): void {
+            $record = $modelClass::query()->lockForUpdate()->findOrFail($attendance);
+            abort_unless($record->review_status === 'perlu_ditinjau', 409);
+
+            $attributes = [
+                'review_status' => $data['decision'],
+                'reviewed_by' => $request->user()->id,
+                'reviewed_at' => now(),
+                'review_note' => $data['note'],
+            ];
+            if ($type === 'murid') {
+                $attributes['needs_review'] = false;
+            }
+            $record->forceFill($attributes)->save();
+
+            $request->user()->auditLogs()->create([
+                'action' => 'reviewed',
+                'record_type' => $modelClass,
+                'record_id' => $record->id,
+                'description' => 'Meninjau absensi '.($type === 'murid' ? 'murid' : 'guru').' tanggal '.$record->attendance_date->format('Y-m-d'),
+                'metadata' => ['decision' => $data['decision'], 'note' => $data['note']],
+                'ip_address' => $request->ip(),
+            ]);
+        });
+
+        return back()->with('status', 'Hasil tinjauan absensi berhasil disimpan dan dicatat di audit aktivitas.');
     }
 
     private function teachersForMonth(string $month): Builder

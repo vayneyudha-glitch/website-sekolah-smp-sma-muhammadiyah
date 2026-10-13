@@ -18,6 +18,11 @@
                     <input id="radius_meters" name="radius_meters" type="number" min="20" max="5000" required value="{{ old('radius_meters', $settings->radius_meters ?: 100) }}" class="mt-1 min-h-11 w-full rounded-lg border-gray-300">
                     <p class="mt-1 text-sm text-gray-600">Nilai awal 100 meter.</p>
                 </div>
+                <div>
+                    <label for="max_accuracy_meters" class="block font-semibold">Ambang akurasi GPS maksimum (meter)</label>
+                    <input id="max_accuracy_meters" name="max_accuracy_meters" type="number" min="1" max="10000" required value="{{ old('max_accuracy_meters', $settings->max_accuracy_meters ?: 100) }}" class="mt-1 min-h-11 w-full rounded-lg border-gray-300">
+                    <p class="mt-1 text-sm text-gray-600">Akurasi yang melewati ambang ditandai untuk ditinjau, bukan langsung ditolak.</p>
+                </div>
                 <fieldset class="grid gap-4 rounded-lg border border-gray-200 p-4 sm:grid-cols-2">
                     <legend class="px-2 font-bold">Jam absen Hadir murid</legend>
                     <div><label for="student_check_in_starts_at" class="block font-semibold">Mulai</label><input id="student_check_in_starts_at" name="student_check_in_starts_at" type="time" required value="{{ old('student_check_in_starts_at', substr((string) $settings->student_check_in_starts_at, 0, 5)) }}" class="mt-1 min-h-11 w-full rounded-lg border-gray-300"></div>
@@ -30,6 +35,7 @@
                 </fieldset>
                 <div class="flex flex-wrap gap-3">
                     <button class="min-h-11 rounded-lg bg-muhammadiyah-hijau px-5 font-semibold text-white">Simpan pengaturan</button>
+                    <a href="{{ route('admin.attendance.review') }}" class="inline-flex min-h-11 items-center rounded-lg border border-gray-300 px-5 font-semibold">Antrean tinjauan</a>
                     <a href="{{ route('admin.attendance.teachers') }}" class="inline-flex min-h-11 items-center rounded-lg border border-gray-300 px-5 font-semibold">Rekap absensi guru</a>
                 </div>
             </form>

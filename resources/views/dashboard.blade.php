@@ -51,14 +51,12 @@
                     </div>
                 </article>
             </section>
-            <section class="flex flex-wrap gap-3">
+            <section class="flex flex-wrap gap-3" aria-label="Pintasan yang sering digunakan">
                 <a href="{{ route('admin.data.index', ['resource' => 'students']) }}" class="rounded-lg bg-muhammadiyah-hijau px-4 py-3 font-semibold text-white">Data murid</a>
                 <a href="{{ route('admin.ppdb.index') }}" class="rounded-lg border border-muhammadiyah-hijau px-4 py-3 font-semibold text-muhammadiyah-hijau-tua">PPDB</a>
                 <a href="{{ route('admin.payments.index') }}" class="rounded-lg border border-muhammadiyah-hijau px-4 py-3 font-semibold text-muhammadiyah-hijau-tua">Pembayaran</a>
-                <a href="{{ route('admin.exports.index') }}" class="rounded-lg border border-amber-400 px-4 py-3 font-semibold text-amber-900">Pusat ekspor</a>
-                <a href="{{ route('admin.school-content.profile.edit') }}" class="inline-flex min-h-12 items-center rounded-lg border border-muhammadiyah-hijau px-4 font-semibold text-muhammadiyah-hijau-tua">Profil sekolah</a>
-                <a href="{{ route('admin.school-content.facilities') }}" class="inline-flex min-h-12 items-center rounded-lg border border-muhammadiyah-hijau px-4 font-semibold text-muhammadiyah-hijau-tua">Fasilitas</a>
-                <a href="{{ route('admin.school-content.gallery') }}" class="inline-flex min-h-12 items-center rounded-lg border border-muhammadiyah-hijau px-4 font-semibold text-muhammadiyah-hijau-tua">Galeri</a>
+                <a href="{{ route('admin.excuses.index') }}" class="rounded-lg border border-muhammadiyah-hijau px-4 py-3 font-semibold text-muhammadiyah-hijau-tua">Izin/sakit</a>
+                <a href="{{ route('admin.reports.index') }}" class="rounded-lg border border-muhammadiyah-hijau px-4 py-3 font-semibold text-muhammadiyah-hijau-tua">Nilai dan rapor</a>
             </section>
         @elseif (auth()->user()->role === \App\Models\User::ROLE_GURU)
             <section class="grid gap-6 lg:grid-cols-3">

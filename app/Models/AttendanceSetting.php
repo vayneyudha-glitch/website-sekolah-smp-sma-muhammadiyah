@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
     'id', 'latitude', 'longitude', 'radius_meters',
     'student_check_in_starts_at', 'student_check_in_ends_at',
     'teacher_check_in_starts_at', 'teacher_check_in_ends_at',
+    'max_accuracy_meters',
 ])]
 class AttendanceSetting extends Model
 {
@@ -20,6 +21,7 @@ class AttendanceSetting extends Model
             'latitude' => 'float',
             'longitude' => 'float',
             'radius_meters' => 'integer',
+            'max_accuracy_meters' => 'integer',
         ];
     }
 

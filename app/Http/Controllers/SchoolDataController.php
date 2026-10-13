@@ -9,6 +9,8 @@ use App\Models\AuditLog;
 use App\Models\ParentChild;
 use App\Models\SchoolClass;
 use App\Models\StudentProfile;
+use App\Models\StudentClassHistory;
+use App\Models\ReportCard;
 use App\Models\Subject;
 use App\Models\TeacherProfile;
 use App\Models\Timetable;
@@ -448,7 +450,7 @@ class SchoolDataController extends Controller
             }
 
             if ($resource === 'students') {
-                return StudentProfile::query()->updateOrCreate(
+                $profile = StudentProfile::query()->updateOrCreate(
                     ['user_id' => $user->id],
                     [
                         'nis' => $data['nis'],
@@ -458,6 +460,19 @@ class SchoolDataController extends Controller
                         'status' => $data['status'],
                     ],
                 );
+                $schoolClass = SchoolClass::query()->findOrFail($data['school_class_id']);
+                StudentClassHistory::query()->updateOrCreate(
+                    [
+                        'student_profile_id' => $profile->id,
+                        'academic_year_id' => $schoolClass->academic_year_id,
+                    ],
+                    [
+                        'school_class_id' => $schoolClass->id,
+                        'status' => $data['status'],
+                    ],
+                );
+
+                return $profile;
             }
 
             if ($resource === 'teachers') {
@@ -560,18 +575,25 @@ class SchoolDataController extends Controller
         $used = match ($resource) {
             'academic-years' => SchoolClass::query()->where('academic_year_id', $record->id)->exists()
                 || Timetable::query()->where('academic_year_id', $record->id)->exists()
+                || StudentClassHistory::query()->where('academic_year_id', $record->id)->exists()
+                || ReportCard::query()->where('academic_year_id', $record->id)->exists()
                 || ($record->is_active && ! AcademicYear::query()
                     ->where('is_active', true)
                     ->where('id', '!=', $record->id)
                     ->exists()),
             'classes' => StudentProfile::query()->where('school_class_id', $record->id)->exists()
+                || StudentClassHistory::query()->where('school_class_id', $record->id)->exists()
+                || ReportCard::query()->where('school_class_id', $record->id)->exists()
                 || Timetable::query()->where('school_class_id', $record->id)->exists(),
-            'subjects' => Timetable::query()->where('subject_id', $record->id)->exists(),
+            'students' => StudentClassHistory::query()->where('student_profile_id', $record->id)->exists(),
+            'subjects' => Timetable::query()->where('subject_id', $record->id)->exists()
+                || \App\Models\GradeComponent::query()->where('subject_id', $record->id)->exists()
+                || \App\Models\ReportCardItem::query()->where('subject_id', $record->id)->exists(),
             'teachers' => Timetable::query()->where('teacher_profile_id', $record->id)->exists(),
             default => false,
         };
 
-        return $used ? 'Data masih digunakan oleh murid atau jadwal. Hapus atau pindahkan data terkait terlebih dahulu.' : null;
+        return $used ? 'Data masih memiliki hubungan atau riwayat yang dipakai sekolah dan tidak dapat dihapus.' : null;
     }
 
     private function audit(string $action, string $resource, Model $record, string $description, ?array $metadata = null): void
