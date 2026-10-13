@@ -6,7 +6,7 @@
             @forelse ($announcements as $announcement)
                 <article class="rounded-xl bg-white p-5 shadow-sm">
                     @if ($announcement->image_path)
-                        <img src="{{ asset('storage/'.$announcement->image_path) }}" alt="" class="mb-4 max-h-64 w-full rounded-lg object-cover">
+                        <img src="{{ asset('storage/'.$announcement->image_path) }}" alt="Gambar: {{ $announcement->title }}" class="mb-4 max-h-64 w-full rounded-lg object-cover">
                     @endif
                     <p class="text-xs font-semibold uppercase tracking-wide text-muhammadiyah-hijau">{{ $announcement->category }}</p>
                     <p class="text-sm text-gray-600">{{ $announcement->published_at->format('d/m/Y') }}</p>

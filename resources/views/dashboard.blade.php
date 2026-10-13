@@ -56,6 +56,9 @@
                 <a href="{{ route('admin.ppdb.index') }}" class="rounded-lg border border-muhammadiyah-hijau px-4 py-3 font-semibold text-muhammadiyah-hijau-tua">PPDB</a>
                 <a href="{{ route('admin.payments.index') }}" class="rounded-lg border border-muhammadiyah-hijau px-4 py-3 font-semibold text-muhammadiyah-hijau-tua">Pembayaran</a>
                 <a href="{{ route('admin.exports.index') }}" class="rounded-lg border border-amber-400 px-4 py-3 font-semibold text-amber-900">Pusat ekspor</a>
+                <a href="{{ route('admin.school-content.profile.edit') }}" class="inline-flex min-h-12 items-center rounded-lg border border-muhammadiyah-hijau px-4 font-semibold text-muhammadiyah-hijau-tua">Profil sekolah</a>
+                <a href="{{ route('admin.school-content.facilities') }}" class="inline-flex min-h-12 items-center rounded-lg border border-muhammadiyah-hijau px-4 font-semibold text-muhammadiyah-hijau-tua">Fasilitas</a>
+                <a href="{{ route('admin.school-content.gallery') }}" class="inline-flex min-h-12 items-center rounded-lg border border-muhammadiyah-hijau px-4 font-semibold text-muhammadiyah-hijau-tua">Galeri</a>
             </section>
         @elseif (auth()->user()->role === \App\Models\User::ROLE_GURU)
             <section class="grid gap-6 lg:grid-cols-3">

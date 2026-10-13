@@ -52,7 +52,7 @@ php artisan migrate
 php artisan storage:link
 ```
 
-Nomor WhatsApp sekolah dibaca dari `SCHOOL_WHATSAPP` pada konfigurasi aplikasi. Isi nilainya dengan kode negara dan nomor telepon, hanya angka (contoh: `6281234567890`).
+Nomor WhatsApp utama diatur dari **Profil Sekolah**. `SCHOOL_WHATSAPP` tetap menjadi nilai cadangan bila kolom profil belum diisi; gunakan kode negara dan nomor telepon, hanya angka (contoh: `6281234567890`).
 
 ## Absensi Sekolah
 
@@ -67,6 +67,23 @@ Fitur absensi memerlukan migrasi baru `2026_10_12_120000_create_attendance_table
 Informasi PPDB publik tersedia di `/ppdb`. Administrator dapat mengatur status buka/tutup, jadwal gelombang, alur, dan biaya dari menu PPDB. Calon murid membuat akun pendaftar, menyimpan data bertahap sebagai draf, mengunggah berkas ke penyimpanan privat, dan memantau hasil verifikasi serta keputusan akhir. Pendaftar yang diterima berubah menjadi murid aktif setelah admin memilih kelas sesuai jenjang.
 
 Untuk mengaktifkan fitur, jalankan migrasi baru `2026_10_12_110000_create_ppdb_tables.php` melalui koneksi sekolah setelah meninjau konfigurasi lingkungan. Berkas pendaftaran menggunakan disk `local` privat; jangan membuat tautan publik ke direktori penyimpanan ini. Ekspor data tersedia sebagai CSV UTF-8 yang dapat dibuka di Excel, dan bukti pendaftaran disediakan sebagai PDF.
+
+## Profil Publik Sekolah dan Data Demo
+
+Halaman publik profil sekolah dikelola dari menu admin **Profil Sekolah**, **Fasilitas**, dan **Galeri**. Isi data profil sebelum publikasi; nilai awal ditandai `[Isi dari panel admin]`. Unggahan galeri dan foto fasilitas menerima JPG, PNG, atau WEBP hingga 5 MB dan memakai nama penyimpanan acak. Jalankan migrasi baru terlebih dahulu, lalu buat tautan penyimpanan publik untuk foto bila tautan belum tersedia:
+
+```bash
+php artisan migrate
+php artisan storage:link
+```
+
+Data uji lokal tersedia melalui seeder terpisah dan tidak dipanggil oleh `DatabaseSeeder`. Seeder ini menolak semua lingkungan selain `local`:
+
+```bash
+php artisan db:seed --class="Database\Seeders\DemoDataSeeder"
+```
+
+Untuk menggunakan kata sandi sendiri, isi `DEMO_PASSWORD` di environment lokal sebelum menjalankan seeder. Jika kosong, seeder membuat kata sandi acak dan menampilkannya sekali di keluaran perintah. Seeder hanya membuat data fiktif dengan alamat `example.test`; jangan gunakan akun demo di luar lingkungan lokal.
 
 ## Dasbor, Ekspor, Notifikasi, dan Privasi
 

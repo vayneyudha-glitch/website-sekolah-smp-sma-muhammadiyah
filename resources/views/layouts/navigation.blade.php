@@ -84,6 +84,9 @@
                                 <x-dropdown-link :href="route('admin.data.index', ['resource' => 'announcements'])">Pengumuman dan Berita</x-dropdown-link>
                                 <x-dropdown-link :href="route('public.announcements')">Berita Sekolah</x-dropdown-link>
                                 <x-dropdown-link :href="route('public.teachers')">Daftar Guru</x-dropdown-link>
+                                <x-dropdown-link :href="route('admin.school-content.profile.edit')">Profil Sekolah</x-dropdown-link>
+                                <x-dropdown-link :href="route('admin.school-content.facilities')">Fasilitas</x-dropdown-link>
+                                <x-dropdown-link :href="route('admin.school-content.gallery')">Galeri</x-dropdown-link>
                             </x-slot>
                         </x-dropdown>
 
@@ -237,6 +240,10 @@
 
                     <div class="px-3 pt-3 text-xs font-semibold uppercase tracking-wide text-muhammadiyah-kuning">Konten</div>
                     <x-responsive-nav-link :href="route('admin.data.index', ['resource' => 'announcements'])" :active="request()->route('resource') === 'announcements'">Pengumuman dan Berita</x-responsive-nav-link>
+                    <div class="px-3 pt-3 text-xs font-semibold uppercase tracking-wide text-muhammadiyah-kuning">Profil dan Konten Publik</div>
+                    <x-responsive-nav-link :href="route('admin.school-content.profile.edit')" :active="request()->routeIs('admin.school-content.profile.*')">Profil Sekolah</x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('admin.school-content.facilities')" :active="request()->routeIs('admin.school-content.facilities*')">Fasilitas</x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('admin.school-content.gallery')" :active="request()->routeIs('admin.school-content.gallery*')">Galeri</x-responsive-nav-link>
                     <x-responsive-nav-link :href="route('public.announcements')" :active="request()->routeIs('public.announcements', 'public.announcement')">Berita Sekolah</x-responsive-nav-link>
                     <x-responsive-nav-link :href="route('public.teachers')" :active="request()->routeIs('public.teachers')">Daftar Guru</x-responsive-nav-link>
 

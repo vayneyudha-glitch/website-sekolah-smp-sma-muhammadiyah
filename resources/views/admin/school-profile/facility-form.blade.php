@@ -1,0 +1,16 @@
+<x-app-layout>
+    <x-slot name="header"><h1 class="text-xl font-bold text-white">{{ $facility ? 'Ubah' : 'Tambah' }} Fasilitas</h1></x-slot>
+    <main class="mx-auto max-w-3xl space-y-5 px-4 py-6 sm:px-6 lg:px-8">
+        @if ($errors->any())<div role="alert" class="rounded-xl bg-red-50 p-4 text-red-800">Periksa kembali isian yang ditandai.</div>@endif
+        <form method="POST" enctype="multipart/form-data" action="{{ $facility ? route('admin.school-content.facilities.update', $facility) : route('admin.school-content.facilities.store') }}" class="space-y-5 rounded-xl bg-white p-5 shadow-sm sm:p-8">
+            @csrf
+            @if ($facility) @method('PUT') @endif
+            <div><label for="name" class="block font-semibold">Nama fasilitas</label><input id="name" name="name" required maxlength="255" value="{{ old('name', $facility?->name) }}" class="mt-1 min-h-12 w-full rounded-lg border-gray-300">@error('name')<p class="mt-1 text-sm text-red-700">{{ $message }}</p>@enderror</div>
+            <div><label for="description" class="block font-semibold">Deskripsi</label><textarea id="description" name="description" required rows="5" class="mt-1 w-full rounded-lg border-gray-300">{{ old('description', $facility?->description) }}</textarea>@error('description')<p class="mt-1 text-sm text-red-700">{{ $message }}</p>@enderror</div>
+            <div><label for="photo" class="block font-semibold">Foto fasilitas (JPG, PNG, WEBP maks. 5 MB)</label>@if ($facility?->photo_path)<img src="{{ asset('storage/'.$facility->photo_path) }}" alt="Foto {{ $facility->name }}" class="my-3 h-32 rounded-lg object-cover">@endif<input id="photo" name="photo" type="file" accept=".jpg,.jpeg,.png,.webp" class="mt-1 block min-h-12 w-full rounded-lg border border-gray-300 p-2">@error('photo')<p class="mt-1 text-sm text-red-700">{{ $message }}</p>@enderror</div>
+            <div><label for="school_level" class="block font-semibold">Jenjang</label><select id="school_level" name="school_level" class="mt-1 min-h-12 w-full rounded-lg border-gray-300"><option value="">Semua jenjang</option><option value="SMP" @selected(old('school_level', $facility?->school_level) === 'SMP')>SMP</option><option value="SMA" @selected(old('school_level', $facility?->school_level) === 'SMA')>SMA</option></select>@error('school_level')<p class="mt-1 text-sm text-red-700">{{ $message }}</p>@enderror</div>
+            <div><label for="sort_order" class="block font-semibold">Urutan tampil</label><input id="sort_order" name="sort_order" type="number" min="0" max="100000" required value="{{ old('sort_order', $facility?->sort_order ?? 0) }}" class="mt-1 min-h-12 w-full rounded-lg border-gray-300">@error('sort_order')<p class="mt-1 text-sm text-red-700">{{ $message }}</p>@enderror</div>
+            <div class="flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:justify-between"><a href="{{ route('admin.school-content.facilities') }}" class="inline-flex min-h-12 items-center justify-center rounded-lg border border-gray-300 px-5 font-semibold">Batal</a><button class="inline-flex min-h-12 items-center justify-center rounded-lg bg-muhammadiyah-hijau px-6 font-bold text-white">Simpan fasilitas</button></div>
+        </form>
+    </main>
+</x-app-layout>

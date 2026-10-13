@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+[x-cloak] {
+    display: none !important;
+}
+
 .welcome-hero {
     background-color: #0A5C2E;
     min-height: 85svh;

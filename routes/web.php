@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AdminPpdbController;
 use App\Http\Controllers\AdminAttendanceController;
 use App\Http\Controllers\AdminPaymentController;
+use App\Http\Controllers\AdminSchoolContentController;
 use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\DashboardController;
@@ -25,9 +26,15 @@ Route::post('/pembayaran/webhook/{provider}', PaymentWebhookController::class)
     ->middleware('throttle:120,1')
     ->name('payments.webhook');
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', [PublicSchoolController::class, 'home'])->name('public.home');
+Route::get('/tentang-sekolah', [PublicSchoolController::class, 'page'])->defaults('page', 'tentang')->name('public.about');
+Route::get('/visi-misi', [PublicSchoolController::class, 'page'])->defaults('page', 'visi-misi')->name('public.vision-mission');
+Route::get('/sejarah', [PublicSchoolController::class, 'page'])->defaults('page', 'sejarah')->name('public.history');
+Route::get('/fasilitas', [PublicSchoolController::class, 'facilities'])->name('public.facilities');
+Route::get('/galeri', [PublicSchoolController::class, 'gallery'])->name('public.gallery');
+Route::get('/kontak', [PublicSchoolController::class, 'contact'])->name('public.contact');
+Route::get('/jenjang/smp', [PublicSchoolController::class, 'page'])->defaults('page', 'jenjang/smp')->name('public.level.smp');
+Route::get('/jenjang/sma', [PublicSchoolController::class, 'page'])->defaults('page', 'jenjang/sma')->name('public.level.sma');
 Route::get('/ppdb', [PpdbController::class, 'information'])->name('ppdb.information');
 Route::middleware('guest')->group(function () {
     Route::get('/ppdb/daftar', [PpdbController::class, 'createAccount'])->name('ppdb.register.create');
@@ -112,6 +119,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::prefix('admin')->name('admin.')->middleware('role:'.User::ROLE_ADMIN)->group(function () {
         Route::get('/aktivitas', [SchoolDataController::class, 'auditIndex'])->name('audit.index');
+        Route::prefix('profil-sekolah')->name('school-content.')->group(function (): void {
+            Route::get('/pengaturan', [AdminSchoolContentController::class, 'editProfile'])->name('profile.edit');
+            Route::put('/pengaturan', [AdminSchoolContentController::class, 'updateProfile'])->name('profile.update');
+            Route::get('/fasilitas', [AdminSchoolContentController::class, 'facilities'])->name('facilities');
+            Route::get('/fasilitas/buat', [AdminSchoolContentController::class, 'createFacility'])->name('facilities.create');
+            Route::post('/fasilitas', [AdminSchoolContentController::class, 'storeFacility'])->name('facilities.store');
+            Route::get('/fasilitas/{facility}/ubah', [AdminSchoolContentController::class, 'editFacility'])->name('facilities.edit');
+            Route::put('/fasilitas/{facility}', [AdminSchoolContentController::class, 'updateFacility'])->name('facilities.update');
+            Route::delete('/fasilitas/{facility}', [AdminSchoolContentController::class, 'destroyFacility'])->name('facilities.destroy');
+            Route::get('/galeri', [AdminSchoolContentController::class, 'gallery'])->name('gallery');
+            Route::post('/galeri', [AdminSchoolContentController::class, 'storeGallery'])->name('gallery.store');
+            Route::delete('/galeri/{gallery}', [AdminSchoolContentController::class, 'destroyGallery'])->name('gallery.destroy');
+        });
         Route::prefix('pembayaran')->name('payments.')->group(function () {
             Route::get('/', [AdminPaymentController::class, 'index'])->name('index');
             Route::get('/ekspor', [AdminPaymentController::class, 'export'])->name('export');

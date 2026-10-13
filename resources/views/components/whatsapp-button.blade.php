@@ -1,5 +1,7 @@
-@if (filled(config('school.whatsapp')))
-<a href="https://wa.me/{{ preg_replace('/\D+/', '', config('school.whatsapp')) }}?text={{ rawurlencode('Assalamu’alaikum, saya ingin bertanya tentang SMP SMA Muhammadiyah Subang.') }}"
+@props(['number' => null])
+@php($whatsapp = filled($number) && $number !== '[Isi dari panel admin]' ? $number : config('school.whatsapp'))
+@if (filled($whatsapp) && $whatsapp !== '[Isi dari panel admin]')
+<a href="https://wa.me/{{ preg_replace('/\D+/', '', $whatsapp) }}?text={{ rawurlencode('Assalamu’alaikum, saya ingin bertanya tentang sekolah.') }}"
    target="_blank"
    rel="noopener noreferrer"
    aria-label="Hubungi sekolah melalui WhatsApp"

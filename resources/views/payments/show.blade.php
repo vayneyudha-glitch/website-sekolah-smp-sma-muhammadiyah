@@ -17,6 +17,7 @@
             @if (in_array($invoice->status, [\App\Models\StudentInvoice::STATUS_UNPAID, \App\Models\StudentInvoice::STATUS_EXPIRED], true))
                 <div id="bayar" class="mt-5 rounded-xl border border-muhammadiyah-hijau/30 bg-muhammadiyah-hijau-muda p-4">
                     <h3 class="font-bold text-muhammadiyah-hijau-tua">Pembayaran online</h3>
+                    <p class="mt-2 text-sm text-gray-700">Pastikan nomor tagihan dan nominal sesuai sebelum memilih metode pembayaran.</p>
                     @if ($gatewayAvailable)
                         <form method="POST" action="{{ route(Auth::user()->role.'.payments.start', $invoice) }}" class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
                             @csrf

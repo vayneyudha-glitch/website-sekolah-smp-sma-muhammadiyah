@@ -11,6 +11,7 @@
             <a href="{{ route('ppdb.information') }}" class="font-semibold text-muhammadiyah-hijau-tua underline">Kembali ke informasi PPDB</a>
             <h1 class="mt-5 text-2xl font-bold text-muhammadiyah-hijau-tua">Buat akun pendaftar</h1>
             <p class="mt-2 text-gray-600">Akun ini digunakan untuk menyimpan draf, melengkapi berkas, dan memantau hasil seleksi.</p>
+            <p class="mt-3 rounded-lg bg-green-50 p-3 text-sm text-green-900">Isi nama dan email yang dapat diakses. Periksa data pendaftaran sebelum dikirim.</p>
             @if ($errors->any())
                 <div role="alert" class="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
                     <ul class="list-inside list-disc">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
