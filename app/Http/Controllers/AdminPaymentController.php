@@ -86,6 +86,7 @@ class AdminPaymentController extends Controller
             'types' => BillType::query()->with('academicYear')->latest()->paginate(20),
             'academicYears' => AcademicYear::query()->orderByDesc('starts_on')->get(),
             'classes' => SchoolClass::query()->with('academicYear')->orderBy('school_level')->orderBy('grade')->orderBy('name')->get(),
+            'activeTypes' => BillType::query()->where('is_active', true)->with('academicYear')->orderBy('name')->get(),
         ]);
     }
 

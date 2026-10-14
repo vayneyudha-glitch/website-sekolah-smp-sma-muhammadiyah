@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AcademicYear;
 use App\Models\AuditLog;
 use App\Models\PpdbApplication;
 use App\Models\PpdbDocument;
@@ -22,16 +23,25 @@ class PpdbWorkflowTest extends TestCase
         parent::setUp();
 
         $this->withoutVite();
+        $today = now('Asia/Jakarta');
+        AcademicYear::query()->create([
+            'name' => 'Tahun Tes PPDB',
+            'starts_on' => $today->copy()->startOfYear()->toDateString(),
+            'ends_on' => $today->copy()->endOfYear()->toDateString(),
+            'is_active' => true,
+        ]);
+        $settings = PpdbSetting::query()->findOrFail(1);
+        $settings->forceFill([
+            'is_open' => true,
+            'starts_on' => $today->copy()->subDay()->toDateString(),
+            'ends_on' => $today->copy()->addDay()->toDateString(),
+        ])->save();
+        $this->assertNull($settings->fresh()->registrationClosureReason());
     }
 
     public function test_public_ppdb_registration_creates_a_draft_with_the_applicant_role(): void
     {
-        PpdbSetting::query()->whereKey(1)->update([
-            'is_open' => true,
-            'wave_schedule' => 'Gelombang satu',
-            'registration_flow' => 'Isi formulir',
-            'costs' => 'Gratis',
-        ]);
+        $this->assertTrue(PpdbSetting::query()->findOrFail(1)->is_open);
         Event::fake([Registered::class]);
 
         $response = $this->post(route('ppdb.register.store'), [
@@ -42,7 +52,6 @@ class PpdbWorkflowTest extends TestCase
             'privacy_consent' => '1',
             'role' => User::ROLE_ADMIN,
         ]);
-
         $user = User::query()->where('email', 'calon@example.test')->firstOrFail();
         $this->assertAuthenticatedAs($user);
         $this->assertSame(User::ROLE_PENDAFTAR, $user->role);
@@ -56,13 +65,6 @@ class PpdbWorkflowTest extends TestCase
 
     public function test_public_ppdb_registration_requires_privacy_consent(): void
     {
-        PpdbSetting::query()->whereKey(1)->update([
-            'is_open' => true,
-            'wave_schedule' => 'Gelombang satu',
-            'registration_flow' => 'Isi formulir',
-            'costs' => 'Gratis',
-        ]);
-
         $response = $this->from(route('ppdb.register.create'))->post(route('ppdb.register.store'), [
             'name' => 'Calon Tanpa Persetujuan',
             'email' => 'tanpa-persetujuan@example.test',

@@ -162,11 +162,11 @@ class SchoolWorkflowsTest extends TestCase
         ])->assertRedirect();
 
         $this->artisan('attendance:mark-absent')->assertSuccessful();
-        $this->assertDatabaseHas('student_attendances', [
-            'student_profile_id' => $profile->id,
-            'attendance_date' => today()->toDateString(),
-            'status' => StudentAttendance::STATUS_SICK,
-        ]);
+        $this->assertTrue(StudentAttendance::query()
+            ->where('student_profile_id', $profile->id)
+            ->whereDate('attendance_date', today()->toDateString())
+            ->where('status', StudentAttendance::STATUS_SICK)
+            ->exists());
     }
 
     public function test_teacher_cannot_review_an_excuse_for_another_teachers_class(): void

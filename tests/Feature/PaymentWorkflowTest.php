@@ -56,6 +56,19 @@ class PaymentWorkflowTest extends TestCase
         $this->actingAs($admin)->get(route('admin.payments.index'))->assertOk();
     }
 
+    public function test_bill_type_page_disables_mass_issuance_when_no_active_types_exist(): void
+    {
+        $admin = User::factory()->create();
+        $admin->forceFill(['role' => User::ROLE_ADMIN])->save();
+
+        $this->actingAs($admin)
+            ->get(route('admin.payments.types'))
+            ->assertOk()
+            ->assertSee('Belum ada jenis tagihan aktif')
+            ->assertSee('<select id="issue_bill_type_id" name="bill_type_id" required disabled', false)
+            ->assertSee('<button disabled', false);
+    }
+
     public function test_a_valid_midtrans_webhook_marks_an_invoice_paid_and_duplicate_notifications_are_idempotent(): void
     {
         [$class, $year] = $this->schoolClass();

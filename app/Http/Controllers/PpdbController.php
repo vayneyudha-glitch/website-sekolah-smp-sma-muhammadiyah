@@ -29,7 +29,7 @@ class PpdbController extends Controller
     private function assertRegistrationOpen(): void
     {
         $settings = PpdbSetting::query()->find(1);
-        $reason = $settings?->registrationClosureReason() ?? 'belum diaktifkan';
+        $reason = $settings === null ? 'belum diaktifkan' : $settings->registrationClosureReason();
 
         abort_if($reason !== null, 403, 'Pendaftaran PPDB sedang ditutup: '.$reason.'.');
     }
@@ -37,7 +37,7 @@ class PpdbController extends Controller
     public function information(): View
     {
         $settings = PpdbSetting::query()->find(1);
-        $closureReason = $settings?->registrationClosureReason() ?? 'belum diaktifkan';
+        $closureReason = $settings === null ? 'belum diaktifkan' : $settings->registrationClosureReason();
 
         return view('ppdb.information', [
             'settings' => $settings,
